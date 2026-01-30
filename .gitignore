@@ -13,3 +13,22 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# 캐시 및 빌드 결과물
+.gradle/
+build/
+/*/build/
+
+# 로컬 환경 설정 (가장 중요)
+local.properties
+
+# 안드로이드 스튜디오 설정
+.idea/*.iml
+.DS_Store
+
+# 서명 키
+*.jks
+*.keystore
+
+# Firebase 설정 (보안을 위해 추천)
+app/google-services.json

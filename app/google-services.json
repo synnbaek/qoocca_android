@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "244111191436",
+    "project_id": "qoocca-parent-app",
+    "storage_bucket": "qoocca-parent-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:244111191436:android:1ffe327fe7eae70c017aa9",
+        "android_client_info": {
+          "package_name": "com.qoocca.parentapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-6z5E-K3GfuyNljRNk__11Z3Iu5PNl-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

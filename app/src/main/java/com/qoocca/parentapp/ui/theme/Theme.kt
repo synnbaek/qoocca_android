@@ -1,58 +1,56 @@
 package com.qoocca.parentapp.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import com.qoocca.parentapp.R
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+// Define the custom font family
+val payboocFontFamily = FontFamily(
+    Font(R.font.paybooc_medium, FontWeight.Normal),
+    Font(R.font.paybooc_medium, FontWeight.Medium),
+    Font(R.font.paybooc_bold, FontWeight.Bold)
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+// Define custom typography
+val appTypography = Typography(
+    displayLarge = TextStyle(fontFamily = payboocFontFamily),
+    displayMedium = TextStyle(fontFamily = payboocFontFamily),
+    displaySmall = TextStyle(fontFamily = payboocFontFamily),
+    headlineLarge = TextStyle(fontFamily = payboocFontFamily),
+    headlineMedium = TextStyle(fontFamily = payboocFontFamily),
+    headlineSmall = TextStyle(fontFamily = payboocFontFamily),
+    titleLarge = TextStyle(fontFamily = payboocFontFamily),
+    titleMedium = TextStyle(fontFamily = payboocFontFamily),
+    titleSmall = TextStyle(fontFamily = payboocFontFamily),
+    bodyLarge = TextStyle(fontFamily = payboocFontFamily),
+    bodyMedium = TextStyle(fontFamily = payboocFontFamily),
+    bodySmall = TextStyle(fontFamily = payboocFontFamily),
+    labelLarge = TextStyle(fontFamily = payboocFontFamily),
+    labelMedium = TextStyle(fontFamily = payboocFontFamily),
+    labelSmall = TextStyle(fontFamily = payboocFontFamily)
 )
 
+// Define the custom theme
 @Composable
-fun ParentAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
+fun QooccaParentsTheme(content: @Composable () -> Unit) {
+    val colors = lightColorScheme(
+        primary = QooccaGreen,
+        secondary = QooccaGreen,
+        tertiary = QooccaGreen,
+        onPrimary = Color.White
+    )
     MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
+        colorScheme = colors,
+        typography = appTypography,
         content = content
     )
 }
+
+val QooccaGreen = Color(0xFF00CF83)

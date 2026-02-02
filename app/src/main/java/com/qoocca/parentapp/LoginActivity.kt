@@ -12,9 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.firebase.messaging.FirebaseMessaging
+import com.qoocca.parentapp.ui.theme.QooccaParentsTheme
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
@@ -33,7 +37,9 @@ class LoginActivity : ComponentActivity() {
         authManager = AuthManager(this)
 
         setContent {
-            LoginScreen()
+            QooccaParentsTheme {
+                LoginScreen()
+            }
         }
     }
 
@@ -42,35 +48,55 @@ class LoginActivity : ComponentActivity() {
         var phone by remember { mutableStateOf("") }
         var isLoading by remember { mutableStateOf(false) }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "학부모 로그인", style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            OutlinedTextField(
-                value = phone,
-                onValueChange = { phone = it },
-                label = { Text("전화번호 (예: 01012345678)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Button(
-                onClick = { performLogin(phone) { isLoading = it } },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                } else {
-                    Text("로그인")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Qoocca",
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = "parents",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                    )
+                }
+                Spacer(modifier = Modifier.height(48.dp))
+
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    label = { Text("전화번호 (예: 01012345678)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = { performLogin(phone) { isLoading = it } },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    enabled = !isLoading,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text("로그인", fontSize = 16.sp)
+                    }
                 }
             }
         }
@@ -109,14 +135,15 @@ class LoginActivity : ComponentActivity() {
                         try {
                             val jsonResponse = JSONObject(responseData)
                             val parentId = jsonResponse.getLong("parentId")
+                            val accessToken = jsonResponse.getString("accessToken")
                             val parentName = jsonResponse.getString("parentName")
-                            
+
                             Log.d(TAG, "로그인 성공: $parentName (ID: $parentId)")
-                            authManager.saveParentId(parentId)
-                            
+                            authManager.saveAuthData(parentId, accessToken)
+
                             // 로그인 성공 후 즉시 FCM 토큰 등록
                             registerFcmToken(parentId)
-                            
+
                             startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                             finish()
                         } catch (e: Exception) {
@@ -131,7 +158,7 @@ class LoginActivity : ComponentActivity() {
             }
         })
     }
-
+    
     private fun registerFcmToken(parentId: Long) {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
@@ -165,5 +192,13 @@ class LoginActivity : ComponentActivity() {
                 Log.d(TAG, "FCM 토큰 등록 완료: ${response.code}")
             }
         })
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun LoginScreenPreview() {
+        QooccaParentsTheme {
+            LoginScreen()
+        }
     }
 }

@@ -34,6 +34,12 @@
             android:exported="false"
             android:theme="@style/Theme.ParentApp" />
 
+        <!-- 결제 화면 액티비티 -->
+        <activity
+            android:name=".PaymentActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ParentApp" />
+
         <!-- 결제 상세 액티비티 추가 -->
         <activity
             android:name=".ReceiptDetailActivity"

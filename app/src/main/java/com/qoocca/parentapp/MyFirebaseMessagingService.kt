@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.TaskStackBuilder
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import okhttp3.*
@@ -29,20 +30,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
-        
-        // 1. Data-only payload 수신 로그
+
         Log.d(TAG, "Message received from: ${message.from}")
         Log.d(TAG, "Payload data: ${message.data}")
 
         if (message.data.isNotEmpty()) {
-            // 2. 백엔드에서 보낸 data 필드 추출
-            val receiptId = message.data["receiptId"]
             val title = message.data["title"] ?: "결제 요청"
             val body = message.data["body"] ?: "새로운 결제 요청이 도착했습니다."
+            val receiptId = message.data["receiptId"]
 
-            Log.d(TAG, "Parsed -> ID: $receiptId, Title: $title, Body: $body")
-            
-            // 3. 직접 알림 생성 (포그라운드/백그라운드/종료 상태 모두 대응)
             sendNotification(title, body, receiptId)
         }
     }
@@ -50,7 +46,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun sendNotification(title: String, body: String, receiptId: String?) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // 4. 알림 채널 설정 (Android 8.0 이상 필수)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
@@ -62,20 +57,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        // 5. 알림 클릭 시 ReceiptDetailActivity로 이동 (receiptId 포함)
-        val intent = Intent(this, ReceiptDetailActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra("RECEIPT_ID", receiptId)
+        // MainActivity를 먼저 열고 PaymentActivity로 이동하도록 설정
+        val paymentIntent = Intent(this, PaymentActivity::class.java).apply {
+            putExtra("receiptId", receiptId?.toLongOrNull() ?: -1L)
         }
-        
-        val pendingIntent = PendingIntent.getActivity(
-            this, 
-            System.currentTimeMillis().toInt(), 
-            intent,
-            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-        )
 
-        // 6. 알림 빌드 및 표시
+        val pendingIntent: PendingIntent? = TaskStackBuilder.create(this).run {
+            addNextIntentWithParentStack(paymentIntent)
+            getPendingIntent(System.currentTimeMillis().toInt(), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
+
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_agenda)
             .setContentTitle(title)

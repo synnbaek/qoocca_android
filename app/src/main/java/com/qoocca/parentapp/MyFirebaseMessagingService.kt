@@ -1,4 +1,4 @@
-package com.qoocca.parentapp
+﻿package com.qoocca.parentapp
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -11,16 +11,14 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.TaskStackBuilder
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import okhttp3.*
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
+import com.qoocca.parentapp.data.network.ApiResult
+import com.qoocca.parentapp.data.repository.FcmRepository
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     private val TAG = "FCM_SERVICE"
-    private val BASE_URL = ApiConfig.API_BASE_URL
     private val CHANNEL_ID = "payment_channel"
+    private val fcmRepository = FcmRepository()
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
@@ -64,7 +62,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         val pendingIntent: PendingIntent? = TaskStackBuilder.create(this).run {
             addNextIntentWithParentStack(paymentIntent)
-            getPendingIntent(System.currentTimeMillis().toInt(), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            getPendingIntent(
+                System.currentTimeMillis().toInt(),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         }
 
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -88,24 +89,13 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             return
         }
 
-        val client = OkHttpClient()
-        val url = "$BASE_URL/api/fcm/register".toHttpUrlOrNull()?.newBuilder()
-            ?.addQueryParameter("parentId", parentId.toString())
-            ?.addQueryParameter("fcmToken", token)
-            ?.build() ?: return
-
-        val request = Request.Builder()
-            .url(url)
-            .post("".toRequestBody())
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "서버 전송 실패: ${e.message}")
+        fcmRepository.registerToken(parentId, token) { result ->
+            when (result) {
+                is ApiResult.Success -> Log.d(TAG, "서버 전송 결과: success")
+                is ApiResult.HttpError -> Log.e(TAG, "서버 전송 실패: ${result.code} - ${result.body}")
+                is ApiResult.NetworkError -> Log.e(TAG, "서버 전송 실패: ${result.exception.message}")
+                is ApiResult.UnknownError -> Log.e(TAG, "서버 전송 실패: ${result.exception.message}")
             }
-            override fun onResponse(call: Call, response: Response) {
-                Log.d(TAG, "서버 전송 결과: ${response.code}")
-            }
-        })
+        }
     }
 }

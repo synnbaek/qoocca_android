@@ -1,9 +1,10 @@
 package com.qoocca.parentapp
 
+import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -27,214 +28,149 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.gson.Gson
+import com.qoocca.parentapp.presentation.payment.PaymentEvent
+import com.qoocca.parentapp.presentation.payment.PaymentUiState
+import com.qoocca.parentapp.presentation.payment.PaymentViewModel
 import com.qoocca.parentapp.ui.theme.QooccaParentsTheme
 import com.qoocca.parentapp.ui.theme.payboocFontFamily
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.*
-import java.io.IOException
 import java.text.NumberFormat
 import java.util.Locale
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 class PaymentActivity : ComponentActivity() {
-    private val TAG = "PAYMENT_ACTIVITY_DEBUG"
-    private val BASE_URL = ApiConfig.API_BASE_URL
-    private val client = OkHttpClient()
-    private lateinit var authManager: AuthManager
+
+    private val viewModel: PaymentViewModel by viewModels()
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        authManager = AuthManager(this)
 
         val receiptId = intent.getLongExtra("receiptId", -1L)
         val receiptIds = intent.getLongArrayExtra("receiptIds")
 
         setContent {
             QooccaParentsTheme {
-                val coroutineScope = rememberCoroutineScope()
-                var receipts by remember { mutableStateOf<List<ParentReceiptResponse>>(emptyList()) }
-                var isLoading by remember { mutableStateOf(false) }
-                var infoMessage by remember { mutableStateOf<String?>(null) }
-                var errorMessage by remember { mutableStateOf<String?>(null) }
+                val uiState by viewModel.uiState.collectAsState()
 
-                LaunchedEffect(receiptId, receiptIds) {
-                    isLoading = true
-                    val idsToFetch = receiptIds?.toList() ?: (if (receiptId != -1L) listOf(receiptId) else emptyList())
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            PaymentEvent.PaymentSuccess -> {
+                                setResult(RESULT_OK)
+                                finish()
+                            }
 
-                    if (idsToFetch.isNotEmpty()) {
-                        fetchAllReceiptDetails(idsToFetch) {
-                            receipts = it
-                            isLoading = false
+                            PaymentEvent.NavigateLogin -> {
+                                startActivity(Intent(this@PaymentActivity, LoginActivity::class.java))
+                                finish()
+                            }
                         }
-                    } else {
-                        isLoading = false
-                        errorMessage = "결제 정보를 찾을 수 없습니다."
                     }
                 }
 
-                Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = { Text("결제하기", fontWeight = FontWeight.Bold, fontFamily = payboocFontFamily) },
-                            navigationIcon = {
-                                IconButton(onClick = { finish() }) {
-                                    Icon(Icons.Filled.ArrowBack, contentDescription = "뒤로가기", tint = Color.White)
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                titleContentColor = Color.White
+                LaunchedEffect(receiptId, receiptIds?.contentHashCode()) {
+                    viewModel.initialize(receiptId, receiptIds)
+                }
+
+                PaymentContent(
+                    uiState = uiState,
+                    onBack = { finish() },
+                    onConfirmPayment = viewModel::confirmPayments
+                )
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun PaymentContent(
+        uiState: PaymentUiState,
+        onBack: () -> Unit,
+        onConfirmPayment: () -> Unit
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            "결제하기",
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = payboocFontFamily
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBack,
+                                contentDescription = "뒤로가기",
+                                tint = Color.White
                             )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = Color.White
+                    )
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                if (uiState.isLoading && uiState.receipts.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (uiState.receipts.isNotEmpty()) {
+                    PaymentScreen(
+                        modifier = Modifier,
+                        receipts = uiState.receipts,
+                        isLoading = uiState.isLoading,
+                        onConfirmPayment = onConfirmPayment
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(uiState.errorMessage ?: "결제 정보를 불러오는데 실패했습니다.")
+                    }
+                }
+
+                val message = uiState.infoMessage ?: uiState.errorMessage
+                val isError = uiState.errorMessage != null
+
+                AnimatedVisibility(
+                    visible = message != null,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    enter = slideInVertically(initialOffsetY = { -it }),
+                    exit = slideOutVertically(targetOffsetY = { -it })
+                ) {
+                    val backgroundColor = if (isError) {
+                        MaterialTheme.colorScheme.errorContainer
+                    } else {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    }
+                    val textColor = if (isError) {
+                        MaterialTheme.colorScheme.onErrorContainer
+                    } else {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    }
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = backgroundColor
+                    ) {
+                        Text(
+                            text = message.orEmpty(),
+                            modifier = Modifier.padding(16.dp),
+                            color = textColor,
+                            textAlign = TextAlign.Center
                         )
                     }
-                ) { paddingValues ->
-                    Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                        if (isLoading && receipts.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
-                        } else if (receipts.isNotEmpty()) {
-                            PaymentScreen(
-                                modifier = Modifier,
-                                receipts = receipts,
-                                isLoading = isLoading,
-                                onConfirmPayment = {
-                                    isLoading = true
-                                    coroutineScope.launch {
-                                        val results = completeAllPayments(receipts.map { it.receiptId })
-                                        val failedCount = results.count { !it }
-                                        isLoading = false
-                                        if (failedCount == 0) {
-                                            infoMessage = "결제가 성공적으로 완료되었습니다."
-                                            setResult(RESULT_OK)
-                                            delay(2000)
-                                            finish()
-                                        } else {
-                                            errorMessage = "${failedCount}건의 결제에 실패했습니다. 다시 시도해주세요."
-                                            delay(3000)
-                                            errorMessage = null
-                                        }
-                                    }
-                                }
-                            )
-                        } else {
-                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(errorMessage ?: "결제 정보를 불러오는데 실패했습니다.")
-                            }
-                        }
-
-                        val message = infoMessage ?: errorMessage
-                        val isError = errorMessage != null
-
-                        AnimatedVisibility(
-                            visible = message != null,
-                            modifier = Modifier.align(Alignment.TopCenter),
-                            enter = slideInVertically(initialOffsetY = { -it }),
-                            exit = slideOutVertically(targetOffsetY = { -it })
-                        ) {
-                            val backgroundColor = when {
-                                isError -> MaterialTheme.colorScheme.errorContainer
-                                else -> MaterialTheme.colorScheme.tertiaryContainer
-                            }
-                            val textColor = when {
-                                isError -> MaterialTheme.colorScheme.onErrorContainer
-                                else -> MaterialTheme.colorScheme.onTertiaryContainer
-                            }
-
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = backgroundColor
-                            ) {
-                                Text(
-                                    text = message.orEmpty(),
-                                    modifier = Modifier.padding(16.dp),
-                                    color = textColor,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }
-    }
-
-    private fun fetchAllReceiptDetails(receiptIds: List<Long>, onResult: (List<ParentReceiptResponse>) -> Unit) {
-        val token = authManager.getToken() ?: return
-        val coroutineScope = CoroutineScope(Dispatchers.IO)
-
-        coroutineScope.launch {
-            val deferreds = receiptIds.map { id ->
-                async {
-                    val request = Request.Builder()
-                        .url("$BASE_URL/api/parent/receipt/$id")
-                        .header("Authorization", "Bearer $token")
-                        .build()
-
-                    try {
-                        val response = client.newCall(request).execute()
-                        val responseData = response.body?.string()
-                        if (response.isSuccessful && responseData != null) {
-                            Gson().fromJson(responseData, ParentReceiptResponse::class.java)
-                        } else {
-                            null
-                        }
-                    } catch (e: IOException) {
-                        null
-                    }
-                }
-            }
-            val results = deferreds.awaitAll().filterNotNull()
-            withContext(Dispatchers.Main) {
-                onResult(results)
-            }
-        }
-    }
-
-
-    private suspend fun completePayment(receiptId: Long): Boolean = suspendCoroutine {
-        val token = authManager.getToken()
-        if (token == null) {
-            it.resume(false)
-            return@suspendCoroutine
-        }
-
-        val request = Request.Builder()
-            .url("$BASE_URL/api/receipt/$receiptId/pay")
-            .header("Authorization", "Bearer $token")
-            .post(FormBody.Builder().build())
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "결제 실패: ${e.message}")
-                it.resume(false)
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                it.resume(response.isSuccessful)
-            }
-        })
-    }
-
-    private suspend fun completeAllPayments(receiptIds: List<Long>): List<Boolean> = coroutineScope {
-        receiptIds.map { id ->
-            async { completePayment(id) }
-        }.awaitAll()
     }
 }
-
-
 data class CardInfo(
     val name: String,
     val gradient: Brush,

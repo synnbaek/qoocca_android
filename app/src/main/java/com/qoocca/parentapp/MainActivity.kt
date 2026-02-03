@@ -4,11 +4,24 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
@@ -21,8 +34,26 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,41 +64,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.qoocca.parentapp.presentation.main.MainEvent
+import com.qoocca.parentapp.presentation.main.MainUiState
+import com.qoocca.parentapp.presentation.main.MainViewModel
 import com.qoocca.parentapp.ui.theme.QooccaParentsTheme
 import com.qoocca.parentapp.ui.theme.payboocFontFamily
-import kotlinx.coroutines.launch
-import okhttp3.*
-import java.io.IOException
 import java.text.NumberFormat
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-    private val TAG = "MAIN_ACTIVITY_DEBUG"
-    private val BASE_URL = ApiConfig.API_BASE_URL
-    private lateinit var authManager: AuthManager
-    private val client = OkHttpClient()
 
-    private lateinit var paymentLauncher: androidx.activity.result.ActivityResultLauncher<Intent>
-    private val refreshTrigger = mutableStateOf(false)
+    private val viewModel: MainViewModel by viewModels()
+    private lateinit var paymentLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        authManager = AuthManager(this)
 
-        paymentLauncher = registerForActivityResult(
-            androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-        ) { result ->
+        paymentLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
-                Log.d(TAG, "결제 성공 신호 수신 - 목록 새로고침")
-                refreshTrigger.value = !refreshTrigger.value
+                viewModel.refresh()
             }
         }
 
-        if (!authManager.isLoggedIn()) {
+        if (!viewModel.isLoggedIn()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
@@ -77,8 +98,24 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             QooccaParentsTheme {
+                val uiState by viewModel.uiState.collectAsState()
+
+                LaunchedEffect(Unit) {
+                    viewModel.events.collect { event ->
+                        if (event is MainEvent.NavigateLogin) {
+                            startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+                            finish()
+                        }
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    viewModel.loadInitial()
+                }
+
                 ReceiptListScreen(
-                    refreshTrigger = refreshTrigger,
+                    uiState = uiState,
+                    onRefresh = viewModel::refresh,
                     onLaunchPayment = { intent -> paymentLauncher.launch(intent) }
                 )
             }
@@ -88,53 +125,11 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
     @Composable
     fun ReceiptListScreen(
-        refreshTrigger: State<Boolean>,
+        uiState: MainUiState,
+        onRefresh: () -> Unit,
         onLaunchPayment: (Intent) -> Unit
     ) {
-        var receipts by remember { mutableStateOf<List<ParentReceiptResponse>>(emptyList()) }
-        var isLoading by remember { mutableStateOf(true) }
-        var isRefreshing by remember { mutableStateOf(false) }
-        var error by remember { mutableStateOf<String?>(null) }
-        val coroutineScope = rememberCoroutineScope()
-
-        fun refresh() {
-            coroutineScope.launch {
-                isRefreshing = true
-                fetchReceipts(
-                    onSuccess = {
-                        receipts = it
-                        error = null
-                        isRefreshing = false
-                        isLoading = false
-                    },
-                    onError = {
-                        error = it
-                        isRefreshing = false
-                        isLoading = false
-                    }
-                )
-            }
-        }
-
-        LaunchedEffect(refreshTrigger.value) {
-            refresh()
-        }
-
-        // 최초 진입 로딩
-        LaunchedEffect(Unit) {
-            fetchReceipts(
-                onSuccess = {
-                    receipts = it
-                    isLoading = false
-                },
-                onError = {
-                    error = it
-                    isLoading = false
-                }
-            )
-        }
-
-        val pullRefreshState = rememberPullRefreshState(isRefreshing, onRefresh = ::refresh)
+        val pullRefreshState = rememberPullRefreshState(uiState.isRefreshing, onRefresh = onRefresh)
 
         Scaffold(
             topBar = {
@@ -153,7 +148,7 @@ class MainActivity : ComponentActivity() {
                         actionIconContentColor = Color.White
                     ),
                     actions = {
-                        IconButton(onClick = ::refresh) {
+                        IconButton(onClick = onRefresh) {
                             Icon(Icons.Filled.Refresh, contentDescription = "새로고침")
                         }
                         IconButton(onClick = { /* TODO: 알림 화면 이동 */ }) {
@@ -168,8 +163,8 @@ class MainActivity : ComponentActivity() {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                if (!isLoading && error == null) {
-                    ParentStatusHeader(receipts = receipts)
+                if (!uiState.isLoading && uiState.error == null) {
+                    ParentStatusHeader(receipts = uiState.receipts)
                 }
 
                 Box(
@@ -178,19 +173,19 @@ class MainActivity : ComponentActivity() {
                         .pullRefresh(pullRefreshState)
                 ) {
                     when {
-                        isLoading -> {
+                        uiState.isLoading -> {
                             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                         }
 
-                        error != null -> {
+                        uiState.error != null -> {
                             Text(
-                                text = "오류: $error",
+                                text = "오류: ${uiState.error}",
                                 modifier = Modifier.align(Alignment.Center),
                                 color = Color.Red
                             )
                         }
 
-                        receipts.isEmpty() -> {
+                        uiState.receipts.isEmpty() -> {
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -214,7 +209,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         else -> {
-                            val groupedReceipts = receipts.groupBy { it.academyName }
+                            val groupedReceipts = uiState.receipts.groupBy { it.academyName }
 
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
@@ -240,65 +235,13 @@ class MainActivity : ComponentActivity() {
                     }
 
                     PullRefreshIndicator(
-                        refreshing = isRefreshing,
+                        refreshing = uiState.isRefreshing,
                         state = pullRefreshState,
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
                 }
             }
         }
-    }
-
-    private fun fetchReceipts(
-        onSuccess: (List<ParentReceiptResponse>) -> Unit,
-        onError: (String) -> Unit
-    ) {
-        val token = authManager.getToken()
-        if (token == null) {
-            onError("로그인 토큰을 찾을 수 없습니다. 다시 로그인해주세요.")
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
-
-        val request = Request.Builder()
-            .url("$BASE_URL/api/parent/receipt/requests")
-            .header("Authorization", "Bearer $token")
-            .get()
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e(TAG, "결제 목록 조회 실패: ${e.message}")
-                runOnUiThread { onError("서버 연결에 실패했습니다.") }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                val responseData = response.body?.string()
-                if (response.isSuccessful && responseData != null) {
-                    try {
-                        val gson = Gson()
-                        val receiptListType =
-                            object : TypeToken<List<ParentReceiptResponse>>() {}.type
-                        val receiptList: List<ParentReceiptResponse> =
-                            gson.fromJson(responseData, receiptListType)
-                        runOnUiThread { onSuccess(receiptList) }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "응답 파싱 에러: ${e.message}")
-                        runOnUiThread { onError("데이터를 처리하는 중 오류가 발생했습니다.") }
-                    }
-                } else {
-                    Log.e(TAG, "결제 목록 조회 에러: ${response.code} - $responseData")
-                    if (response.code == 403) {
-                        runOnUiThread { onError("인증에 실패했습니다. 다시 로그인 해주세요.") }
-                        startActivity(Intent(this@MainActivity, LoginActivity::class.java))
-                        finish()
-                    } else {
-                        runOnUiThread { onError("결제 목록을 가져오지 못했습니다. (코드: ${response.code})") }
-                    }
-                }
-            }
-        })
     }
 
     private fun checkNotificationPermission() {
@@ -317,7 +260,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
 fun ParentStatusHeader(receipts: List<ParentReceiptResponse>) {
     val studentNames = receipts.map { it.studentName }.distinct().joinToString(", ")

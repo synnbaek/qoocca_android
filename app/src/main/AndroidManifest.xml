@@ -20,7 +20,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.ParentApp">>
+            android:theme="@style/Theme.ParentApp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -31,19 +31,13 @@
         <activity
             android:name=".LoginActivity"
             android:exported="false"
-            android:theme="@style/Theme.ParentApp"> />
+            android:theme="@style/Theme.ParentApp"/>
 
         <!-- 결제 화면 액티비티 -->
         <activity
             android:name=".PaymentActivity"
             android:exported="false"
-            android:theme="@style/Theme.ParentApp"> />
-
-        <!-- 결제 상세 액티비티 추가 -->
-        <activity
-            android:name=".ReceiptDetailActivity"
-            android:exported="false"
-            android:theme="@style/Theme.ParentApp"> />
+            android:theme="@style/Theme.ParentApp"/>
 
         <service
             android:name=".MyFirebaseMessagingService"

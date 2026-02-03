@@ -1,9 +1,14 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
 
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
+val hasGoogleServicesFile = file("google-services.json").exists() || file("src/debug/google-services.json").exists()
+if (hasGoogleServicesFile) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+} else {
+    logger.lifecycle("google-services.json not found. Skipping google-services and crashlytics plugins.")
 }
 
 android {

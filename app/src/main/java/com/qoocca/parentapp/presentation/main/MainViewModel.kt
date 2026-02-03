@@ -1,16 +1,16 @@
-package com.qoocca.parentapp.presentation.main
+﻿package com.qoocca.parentapp.presentation.main
 
 import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import com.qoocca.parentapp.AuthManager
-import com.qoocca.parentapp.data.network.ApiResult
 import com.qoocca.parentapp.data.repository.ReceiptRepository
+import com.qoocca.parentapp.domain.error.AppError
+import com.qoocca.parentapp.domain.result.AppResult
+import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -20,9 +20,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
-
-    private val _events = MutableSharedFlow<MainEvent>(extraBufferCapacity = 2)
-    val events = _events.asSharedFlow()
 
     fun isLoggedIn(): Boolean = authManager.isLoggedIn()
 
@@ -42,7 +39,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isRefreshing = false,
                 error = UiMessageFactory.TOKEN_REQUIRED
             )
-            _events.tryEmit(MainEvent.NavigateLogin)
+            AuthSessionManager.onAuthFailure(getApplication())
             return
         }
 
@@ -54,7 +51,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         receiptRepository.fetchReceiptRequests(token) { result ->
             when (result) {
-                is ApiResult.Success -> {
+                is AppResult.Success -> {
                     _uiState.value = _uiState.value.copy(
                         receipts = result.data,
                         isLoading = false,
@@ -63,39 +60,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                 }
 
-                is ApiResult.NetworkError -> {
-                    Log.e(TAG, "결제 목록 조회 실패: ${result.exception.message}")
+                is AppResult.Failure -> {
+                    Log.e(TAG, "결제 목록 조회 실패: ${result.error}")
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isRefreshing = false,
-                        error = UiMessageFactory.receiptListFailure(result)
+                        error = UiMessageFactory.receiptListFailure(result.error)
                     )
-                }
-
-                is ApiResult.UnknownError -> {
-                    Log.e(TAG, "응답 파싱 에러: ${result.exception.message}")
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isRefreshing = false,
-                        error = UiMessageFactory.receiptListFailure(result)
-                    )
-                }
-
-                is ApiResult.HttpError -> {
-                    Log.e(TAG, "결제 목록 조회 에러: ${result.code} - ${result.body}")
-                    if (result.code == 403) {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            isRefreshing = false,
-                            error = UiMessageFactory.receiptListFailure(result)
-                        )
-                        _events.tryEmit(MainEvent.NavigateLogin)
-                    } else {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            isRefreshing = false,
-                            error = UiMessageFactory.receiptListFailure(result)
-                        )
+                    if (result.error == AppError.Unauthorized || result.error == AppError.Forbidden) {
+                        AuthSessionManager.onAuthFailure(getApplication())
                     }
                 }
             }

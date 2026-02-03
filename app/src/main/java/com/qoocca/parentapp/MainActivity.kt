@@ -64,9 +64,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.qoocca.parentapp.presentation.main.MainEvent
 import com.qoocca.parentapp.presentation.main.MainUiState
 import com.qoocca.parentapp.presentation.main.MainViewModel
+import com.qoocca.parentapp.presentation.common.AuthSessionEvent
+import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.ui.theme.QooccaParentsTheme
 import com.qoocca.parentapp.ui.theme.payboocFontFamily
 import java.text.NumberFormat
@@ -101,8 +102,8 @@ class MainActivity : ComponentActivity() {
                 val uiState by viewModel.uiState.collectAsState()
 
                 LaunchedEffect(Unit) {
-                    viewModel.events.collect { event ->
-                        if (event is MainEvent.NavigateLogin) {
+                    AuthSessionManager.events.collect { event ->
+                        if (event is AuthSessionEvent.SessionExpired) {
                             startActivity(Intent(this@MainActivity, LoginActivity::class.java))
                             finish()
                         }

@@ -11,5 +11,4 @@ data class PaymentUiState(
 
 sealed interface PaymentEvent {
     data object PaymentSuccess : PaymentEvent
-    data object NavigateLogin : PaymentEvent
 }

@@ -8,7 +8,3 @@ data class MainUiState(
     val isRefreshing: Boolean = false,
     val error: String? = null
 )
-
-sealed interface MainEvent {
-    data object NavigateLogin : MainEvent
-}

@@ -2,7 +2,9 @@
 
 import com.qoocca.parentapp.data.model.LoginResponse
 import com.qoocca.parentapp.data.network.ApiClient
+import com.qoocca.parentapp.data.network.ApiErrorMapper
 import com.qoocca.parentapp.data.network.ApiResult
+import com.qoocca.parentapp.domain.result.AppResult
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -10,7 +12,7 @@ import org.json.JSONObject
 class AuthRepository(
     private val apiClient: ApiClient = ApiClient()
 ) {
-    fun login(phone: String, onResult: (ApiResult<LoginResponse>) -> Unit) {
+    fun login(phone: String, onResult: (AppResult<LoginResponse>) -> Unit) {
         val requestJson = JSONObject().apply {
             put("parentPhone", phone)
         }
@@ -25,7 +27,7 @@ class AuthRepository(
                     try {
                         val json = JSONObject(result.data)
                         onResult(
-                            ApiResult.Success(
+                            AppResult.Success(
                                 LoginResponse(
                                     parentId = json.getLong("parentId"),
                                     accessToken = json.getString("accessToken"),
@@ -34,13 +36,11 @@ class AuthRepository(
                             )
                         )
                     } catch (e: Exception) {
-                        onResult(ApiResult.UnknownError(e))
+                        onResult(AppResult.Failure(ApiErrorMapper.from(ApiResult.UnknownError(e))))
                     }
                 }
 
-                is ApiResult.HttpError -> onResult(result)
-                is ApiResult.NetworkError -> onResult(result)
-                is ApiResult.UnknownError -> onResult(result)
+                else -> onResult(AppResult.Failure(ApiErrorMapper.from(result)))
             }
         }
     }

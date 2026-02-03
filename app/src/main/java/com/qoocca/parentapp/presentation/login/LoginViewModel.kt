@@ -1,4 +1,4 @@
-package com.qoocca.parentapp.presentation.login
+﻿package com.qoocca.parentapp.presentation.login
 
 import android.app.Application
 import android.util.Log
@@ -8,6 +8,7 @@ import com.qoocca.parentapp.AuthManager
 import com.qoocca.parentapp.data.network.ApiResult
 import com.qoocca.parentapp.data.repository.AuthRepository
 import com.qoocca.parentapp.data.repository.FcmRepository
+import com.qoocca.parentapp.domain.result.AppResult
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +43,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
         authRepository.login(phone) { result ->
             when (result) {
-                is ApiResult.Success -> {
+                is AppResult.Success -> {
                     val login = result.data
                     Log.d(TAG, "로그인 성공: ${login.parentName} (ID: ${login.parentId})")
                     authManager.saveAuthData(login.parentId, login.accessToken)
@@ -52,22 +53,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     _events.tryEmit(LoginEvent.NavigateMain)
                 }
 
-                is ApiResult.HttpError -> {
-                    Log.e(TAG, "로그인 에러: ${result.code} - ${result.body}")
+                is AppResult.Failure -> {
+                    Log.e(TAG, "로그인 처리 실패: ${result.error}")
                     _uiState.value = _uiState.value.copy(isLoading = false)
-                    _events.tryEmit(LoginEvent.ShowMessage(UiMessageFactory.loginFailure(result)))
-                }
-
-                is ApiResult.NetworkError -> {
-                    Log.e(TAG, "로그인 실패: ${result.exception.message}")
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                    _events.tryEmit(LoginEvent.ShowMessage(UiMessageFactory.loginFailure(result)))
-                }
-
-                is ApiResult.UnknownError -> {
-                    Log.e(TAG, "로그인 처리 에러: ${result.exception.message}")
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                    _events.tryEmit(LoginEvent.ShowMessage(UiMessageFactory.loginFailure(result)))
+                    _events.tryEmit(LoginEvent.ShowMessage(UiMessageFactory.loginFailure(result.error)))
                 }
             }
         }

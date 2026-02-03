@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.qoocca.parentapp.presentation.common.AuthSessionEvent
+import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.presentation.payment.PaymentEvent
 import com.qoocca.parentapp.presentation.payment.PaymentUiState
 import com.qoocca.parentapp.presentation.payment.PaymentViewModel
@@ -58,11 +60,15 @@ class PaymentActivity : ComponentActivity() {
                                 setResult(RESULT_OK)
                                 finish()
                             }
+                        }
+                    }
+                }
 
-                            PaymentEvent.NavigateLogin -> {
-                                startActivity(Intent(this@PaymentActivity, LoginActivity::class.java))
-                                finish()
-                            }
+                LaunchedEffect(Unit) {
+                    AuthSessionManager.events.collect { event ->
+                        if (event is AuthSessionEvent.SessionExpired) {
+                            startActivity(Intent(this@PaymentActivity, LoginActivity::class.java))
+                            finish()
                         }
                     }
                 }

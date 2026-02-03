@@ -1,4 +1,4 @@
-package com.qoocca.parentapp.presentation.payment
+﻿package com.qoocca.parentapp.presentation.payment
 
 import android.app.Application
 import android.util.Log
@@ -6,9 +6,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.qoocca.parentapp.AuthManager
 import com.qoocca.parentapp.ParentReceiptResponse
-import com.qoocca.parentapp.data.network.ApiResult
 import com.qoocca.parentapp.data.repository.PaymentRepository
 import com.qoocca.parentapp.data.repository.ReceiptRepository
+import com.qoocca.parentapp.domain.error.AppError
+import com.qoocca.parentapp.domain.result.AppResult
+import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -52,7 +54,8 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
     fun confirmPayments() {
         val token = authManager.getToken()
         if (token.isNullOrBlank()) {
-            _events.tryEmit(PaymentEvent.NavigateLogin)
+            _uiState.value = _uiState.value.copy(errorMessage = UiMessageFactory.TOKEN_REQUIRED)
+            AuthSessionManager.onAuthFailure(getApplication())
             return
         }
 
@@ -65,29 +68,28 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         _uiState.value = _uiState.value.copy(isLoading = true)
 
         val failedCount = AtomicInteger(0)
+        val authFailed = AtomicInteger(0)
         val remaining = AtomicInteger(receiptIds.size)
 
         receiptIds.forEach { id ->
             paymentRepository.payReceipt(token, id) { result ->
                 when (result) {
-                    is ApiResult.Success -> Unit
-                    is ApiResult.HttpError -> {
-                        Log.e(TAG, "결제 실패: ${result.code} - ${result.body}")
+                    is AppResult.Success -> Unit
+                    is AppResult.Failure -> {
+                        Log.e(TAG, "결제 실패: ${result.error}")
                         failedCount.incrementAndGet()
-                    }
-                    is ApiResult.NetworkError -> {
-                        Log.e(TAG, "결제 실패: ${result.exception.message}")
-                        failedCount.incrementAndGet()
-                    }
-                    is ApiResult.UnknownError -> {
-                        Log.e(TAG, "결제 처리 실패: ${result.exception.message}")
-                        failedCount.incrementAndGet()
+                        if (result.error == AppError.Unauthorized || result.error == AppError.Forbidden) {
+                            authFailed.incrementAndGet()
+                        }
                     }
                 }
 
                 if (remaining.decrementAndGet() == 0) {
                     val failed = failedCount.get()
                     onPaymentsCompleted(failed)
+                    if (authFailed.get() > 0) {
+                        AuthSessionManager.onAuthFailure(getApplication())
+                    }
                 }
             }
         }
@@ -122,7 +124,8 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
     private fun fetchAllReceiptDetails(receiptIds: List<Long>) {
         val token = authManager.getToken()
         if (token.isNullOrBlank()) {
-            _events.tryEmit(PaymentEvent.NavigateLogin)
+            _uiState.value = _uiState.value.copy(errorMessage = UiMessageFactory.TOKEN_REQUIRED)
+            AuthSessionManager.onAuthFailure(getApplication())
             return
         }
 
@@ -131,14 +134,18 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         val receipts = Collections.synchronizedList(mutableListOf<ParentReceiptResponse>())
         val orderMap = receiptIds.withIndex().associate { it.value to it.index }
         val remaining = AtomicInteger(receiptIds.size)
+        val authFailed = AtomicInteger(0)
 
         receiptIds.forEach { id ->
             receiptRepository.fetchReceiptDetail(token, id) { result ->
                 when (result) {
-                    is ApiResult.Success -> receipts.add(result.data)
-                    is ApiResult.HttpError -> Log.e(TAG, "결제 상세 조회 실패: ${result.code} - ${result.body}")
-                    is ApiResult.NetworkError -> Log.e(TAG, "결제 상세 조회 네트워크 실패: ${result.exception.message}")
-                    is ApiResult.UnknownError -> Log.e(TAG, "결제 상세 조회 파싱 실패: ${result.exception.message}")
+                    is AppResult.Success -> receipts.add(result.data)
+                    is AppResult.Failure -> {
+                        Log.e(TAG, "결제 상세 조회 실패: ${result.error}")
+                        if (result.error == AppError.Unauthorized || result.error == AppError.Forbidden) {
+                            authFailed.incrementAndGet()
+                        }
+                    }
                 }
 
                 if (remaining.decrementAndGet() == 0) {
@@ -148,6 +155,9 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         isLoading = false,
                         errorMessage = if (sortedReceipts.isEmpty()) UiMessageFactory.RECEIPT_FETCH_FAILED else null
                     )
+                    if (authFailed.get() > 0) {
+                        AuthSessionManager.onAuthFailure(getApplication())
+                    }
                 }
             }
         }

@@ -1,6 +1,6 @@
 ﻿package com.qoocca.parentapp.presentation.common
 
-import com.qoocca.parentapp.data.network.ApiResult
+import com.qoocca.parentapp.domain.error.AppError
 
 object UiMessageFactory {
     const val PHONE_REQUIRED = "전화번호를 입력해주세요."
@@ -15,27 +15,25 @@ object UiMessageFactory {
     const val NOTHING_TO_PAY = "결제할 항목이 없습니다."
     const val PAYMENT_SUCCESS = "결제가 성공적으로 완료되었습니다."
 
-    fun loginFailure(result: ApiResult<*>): String {
-        return when (result) {
-            is ApiResult.HttpError -> LOGIN_FAILED
-            is ApiResult.NetworkError -> SERVER_CONNECTION_FAILED
-            is ApiResult.UnknownError -> BAD_SERVER_RESPONSE
-            is ApiResult.Success -> BAD_SERVER_RESPONSE
+    fun loginFailure(error: AppError): String {
+        return when (error) {
+            AppError.Network -> SERVER_CONNECTION_FAILED
+            AppError.Parsing -> BAD_SERVER_RESPONSE
+            is AppError.Server,
+            AppError.Forbidden,
+            AppError.Unauthorized,
+            is AppError.Unknown -> LOGIN_FAILED
         }
     }
 
-    fun receiptListFailure(result: ApiResult<*>): String {
-        return when (result) {
-            is ApiResult.NetworkError -> SERVER_CONNECTION_FAILED
-            is ApiResult.UnknownError -> RECEIPT_PARSE_ERROR
-            is ApiResult.HttpError -> {
-                if (result.code == 403) {
-                    AUTH_FAILED
-                } else {
-                    "결제 목록을 가져오지 못했습니다. (코드: ${result.code})"
-                }
-            }
-            is ApiResult.Success -> RECEIPT_PARSE_ERROR
+    fun receiptListFailure(error: AppError): String {
+        return when (error) {
+            AppError.Network -> SERVER_CONNECTION_FAILED
+            AppError.Parsing -> RECEIPT_PARSE_ERROR
+            AppError.Forbidden,
+            AppError.Unauthorized -> AUTH_FAILED
+            is AppError.Server -> "결제 목록을 가져오지 못했습니다. (코드: ${error.code})"
+            is AppError.Unknown -> RECEIPT_PARSE_ERROR
         }
     }
 

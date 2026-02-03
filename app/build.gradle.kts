@@ -51,6 +51,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.compose.foundation)
+    implementation("androidx.security:security-crypto:1.0.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

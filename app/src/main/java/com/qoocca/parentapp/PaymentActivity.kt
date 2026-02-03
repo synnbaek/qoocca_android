@@ -47,7 +47,7 @@ import kotlin.coroutines.suspendCoroutine
 
 class PaymentActivity : ComponentActivity() {
     private val TAG = "PAYMENT_ACTIVITY_DEBUG"
-    private val BASE_URL = "http://10.0.2.2:8080"
+    private val BASE_URL = ApiConfig.API_BASE_URL
     private val client = OkHttpClient()
     private lateinit var authManager: AuthManager
 
@@ -209,11 +209,10 @@ class PaymentActivity : ComponentActivity() {
             return@suspendCoroutine
         }
 
-        val requestBody = FormBody.Builder().add("receiptId", receiptId.toString()).build()
         val request = Request.Builder()
-            .url("$BASE_URL/api/payment/complete")
+            .url("$BASE_URL/api/receipt/$receiptId/pay")
             .header("Authorization", "Bearer $token")
-            .post(requestBody)
+            .post(FormBody.Builder().build())
             .build()
 
         client.newCall(request).enqueue(object : Callback {

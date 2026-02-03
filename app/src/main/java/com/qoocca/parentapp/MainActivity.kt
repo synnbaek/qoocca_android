@@ -47,7 +47,7 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private val TAG = "MAIN_ACTIVITY_DEBUG"
-    private val BASE_URL = "http://10.0.2.2:8080"
+    private val BASE_URL = ApiConfig.API_BASE_URL
     private lateinit var authManager: AuthManager
     private val client = OkHttpClient()
 

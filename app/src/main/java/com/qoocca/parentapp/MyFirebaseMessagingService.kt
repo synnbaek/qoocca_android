@@ -19,7 +19,7 @@ import java.io.IOException
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     private val TAG = "FCM_SERVICE"
-    private val BASE_URL = "http://10.0.2.2:8080/api/fcm/register"
+    private val BASE_URL = ApiConfig.API_BASE_URL
     private val CHANNEL_ID = "payment_channel"
 
     override fun onNewToken(token: String) {
@@ -89,7 +89,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         val client = OkHttpClient()
-        val url = BASE_URL.toHttpUrlOrNull()?.newBuilder()
+        val url = "$BASE_URL/api/fcm/register".toHttpUrlOrNull()?.newBuilder()
             ?.addQueryParameter("parentId", parentId.toString())
             ?.addQueryParameter("fcmToken", token)
             ?.build() ?: return

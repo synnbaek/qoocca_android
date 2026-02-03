@@ -10,6 +10,7 @@ import com.qoocca.parentapp.data.repository.PaymentRepository
 import com.qoocca.parentapp.data.repository.ReceiptRepository
 import com.qoocca.parentapp.domain.error.AppError
 import com.qoocca.parentapp.domain.result.AppResult
+import com.qoocca.parentapp.presentation.common.AppEventLogger
 import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
 import kotlinx.coroutines.Job
@@ -45,6 +46,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 isLoading = false,
                 errorMessage = UiMessageFactory.RECEIPT_NOT_FOUND
             )
+            AppEventLogger.logEvent(getApplication(), "payment_init_invalid")
             return
         }
 
@@ -56,16 +58,19 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         if (token.isNullOrBlank()) {
             _uiState.value = _uiState.value.copy(errorMessage = UiMessageFactory.TOKEN_REQUIRED)
             AuthSessionManager.onAuthFailure(getApplication())
+            AppEventLogger.logEvent(getApplication(), "payment_confirm_no_token")
             return
         }
 
         val receiptIds = _uiState.value.receipts.map { it.receiptId }
         if (receiptIds.isEmpty()) {
             _uiState.value = _uiState.value.copy(errorMessage = UiMessageFactory.NOTHING_TO_PAY)
+            AppEventLogger.logEvent(getApplication(), "payment_confirm_empty")
             return
         }
 
         _uiState.value = _uiState.value.copy(isLoading = true)
+        AppEventLogger.logEvent(getApplication(), "payment_confirm_started", mapOf("count" to receiptIds.size))
 
         val failedCount = AtomicInteger(0)
         val authFailed = AtomicInteger(0)
@@ -77,6 +82,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                     is AppResult.Success -> Unit
                     is AppResult.Failure -> {
                         Log.e(TAG, "결제 실패: ${result.error}")
+                        AppEventLogger.logEvent(getApplication(), "payment_item_failure", mapOf("error" to result.error.toString()))
                         failedCount.incrementAndGet()
                         if (result.error == AppError.Unauthorized || result.error == AppError.Forbidden) {
                             authFailed.incrementAndGet()
@@ -102,6 +108,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 errorMessage = null,
                 infoMessage = UiMessageFactory.PAYMENT_SUCCESS
             )
+            AppEventLogger.logEvent(getApplication(), "payment_success", mapOf("count" to _uiState.value.receipts.size))
             messageJob?.cancel()
             messageJob = viewModelScope.launch {
                 delay(2000)
@@ -113,6 +120,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                 infoMessage = null,
                 errorMessage = UiMessageFactory.paymentFailedCount(failedCount)
             )
+            AppEventLogger.logEvent(getApplication(), "payment_partial_failure", mapOf("failed_count" to failedCount))
             messageJob?.cancel()
             messageJob = viewModelScope.launch {
                 delay(3000)
@@ -126,6 +134,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
         if (token.isNullOrBlank()) {
             _uiState.value = _uiState.value.copy(errorMessage = UiMessageFactory.TOKEN_REQUIRED)
             AuthSessionManager.onAuthFailure(getApplication())
+            AppEventLogger.logEvent(getApplication(), "payment_detail_no_token")
             return
         }
 
@@ -142,6 +151,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                     is AppResult.Success -> receipts.add(result.data)
                     is AppResult.Failure -> {
                         Log.e(TAG, "결제 상세 조회 실패: ${result.error}")
+                        AppEventLogger.logEvent(getApplication(), "payment_detail_failure", mapOf("error" to result.error.toString()))
                         if (result.error == AppError.Unauthorized || result.error == AppError.Forbidden) {
                             authFailed.incrementAndGet()
                         }
@@ -155,6 +165,7 @@ class PaymentViewModel(application: Application) : AndroidViewModel(application)
                         isLoading = false,
                         errorMessage = if (sortedReceipts.isEmpty()) UiMessageFactory.RECEIPT_FETCH_FAILED else null
                     )
+                    AppEventLogger.logEvent(getApplication(), "payment_receipt_loaded", mapOf("count" to sortedReceipts.size))
                     if (authFailed.get() > 0) {
                         AuthSessionManager.onAuthFailure(getApplication())
                     }

@@ -19,3 +19,6 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# Gson model classes used by API parsing
+-keep class com.qoocca.parentapp.ParentReceiptResponse { *; }
+-keep class com.qoocca.parentapp.data.model.** { *; }

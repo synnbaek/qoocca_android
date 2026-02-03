@@ -7,6 +7,7 @@ import com.qoocca.parentapp.AuthManager
 import com.qoocca.parentapp.data.repository.ReceiptRepository
 import com.qoocca.parentapp.domain.error.AppError
 import com.qoocca.parentapp.domain.result.AppResult
+import com.qoocca.parentapp.presentation.common.AppEventLogger
 import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 error = UiMessageFactory.TOKEN_REQUIRED
             )
             AuthSessionManager.onAuthFailure(getApplication())
+            AppEventLogger.logEvent(getApplication(), "receipt_list_no_token")
             return
         }
 
@@ -52,6 +54,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         receiptRepository.fetchReceiptRequests(token) { result ->
             when (result) {
                 is AppResult.Success -> {
+                    AppEventLogger.logEvent(getApplication(), "receipt_list_success", mapOf("count" to result.data.size))
                     _uiState.value = _uiState.value.copy(
                         receipts = result.data,
                         isLoading = false,
@@ -62,6 +65,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 is AppResult.Failure -> {
                     Log.e(TAG, "결제 목록 조회 실패: ${result.error}")
+                    AppEventLogger.logEvent(getApplication(), "receipt_list_failure", mapOf("error" to result.error.toString()))
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isRefreshing = false,

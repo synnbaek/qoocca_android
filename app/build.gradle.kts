@@ -39,7 +39,10 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation("com.google.firebase:firebase-messaging:23.4.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

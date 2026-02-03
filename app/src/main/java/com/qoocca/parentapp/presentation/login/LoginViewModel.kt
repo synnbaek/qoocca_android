@@ -1,4 +1,4 @@
-﻿package com.qoocca.parentapp.presentation.login
+package com.qoocca.parentapp.presentation.login
 
 import android.app.Application
 import android.util.Log
@@ -9,6 +9,7 @@ import com.qoocca.parentapp.data.network.ApiResult
 import com.qoocca.parentapp.data.repository.AuthRepository
 import com.qoocca.parentapp.data.repository.FcmRepository
 import com.qoocca.parentapp.domain.result.AppResult
+import com.qoocca.parentapp.presentation.common.AppEventLogger
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +47,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 is AppResult.Success -> {
                     val login = result.data
                     Log.d(TAG, "로그인 성공: ${login.parentName} (ID: ${login.parentId})")
+                    AppEventLogger.logEvent(getApplication(), "login_success", mapOf("parent_id" to login.parentId))
                     authManager.saveAuthData(login.parentId, login.accessToken)
                     registerFcmToken(login.parentId)
 
@@ -55,6 +57,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
                 is AppResult.Failure -> {
                     Log.e(TAG, "로그인 처리 실패: ${result.error}")
+                    AppEventLogger.logEvent(getApplication(), "login_failure", mapOf("error" to result.error.toString()))
                     _uiState.value = _uiState.value.copy(isLoading = false)
                     _events.tryEmit(LoginEvent.ShowMessage(UiMessageFactory.loginFailure(result.error)))
                 }
@@ -68,10 +71,22 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 val token = task.result
                 fcmRepository.registerToken(parentId, token) { result ->
                     when (result) {
-                        is ApiResult.Success -> Log.d(TAG, "FCM 토큰 등록 완료")
-                        is ApiResult.HttpError -> Log.e(TAG, "FCM 토큰 등록 실패: ${result.code} - ${result.body}")
-                        is ApiResult.NetworkError -> Log.e(TAG, "FCM 토큰 등록 실패: ${result.exception.message}")
-                        is ApiResult.UnknownError -> Log.e(TAG, "FCM 토큰 등록 실패: ${result.exception.message}")
+                        is ApiResult.Success -> {
+                            Log.d(TAG, "FCM 토큰 등록 완료")
+                            AppEventLogger.logEvent(getApplication(), "fcm_register_success")
+                        }
+                        is ApiResult.HttpError -> {
+                            Log.e(TAG, "FCM 토큰 등록 실패: ${result.code} - ${result.body}")
+                            AppEventLogger.logEvent(getApplication(), "fcm_register_failure", mapOf("code" to result.code))
+                        }
+                        is ApiResult.NetworkError -> {
+                            Log.e(TAG, "FCM 토큰 등록 실패: ${result.exception.message}")
+                            AppEventLogger.logEvent(getApplication(), "fcm_register_failure", mapOf("type" to "network"))
+                        }
+                        is ApiResult.UnknownError -> {
+                            Log.e(TAG, "FCM 토큰 등록 실패: ${result.exception.message}")
+                            AppEventLogger.recordNonFatal(result.exception, mapOf("screen" to "login", "action" to "fcm_register"))
+                        }
                     }
                 }
             }

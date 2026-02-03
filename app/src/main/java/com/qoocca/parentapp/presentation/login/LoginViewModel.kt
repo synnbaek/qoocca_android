@@ -6,9 +6,9 @@ import androidx.lifecycle.AndroidViewModel
 import com.google.firebase.messaging.FirebaseMessaging
 import com.qoocca.parentapp.AuthManager
 import com.qoocca.parentapp.data.network.ApiResult
-import com.qoocca.parentapp.data.repository.AuthRepository
-import com.qoocca.parentapp.data.repository.FcmRepository
 import com.qoocca.parentapp.domain.result.AppResult
+import com.qoocca.parentapp.domain.usecase.LoginUseCase
+import com.qoocca.parentapp.domain.usecase.RegisterFcmTokenUseCase
 import com.qoocca.parentapp.presentation.common.AppEventLogger
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -17,11 +17,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class LoginViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val authManager = AuthManager(application)
-    private val authRepository = AuthRepository()
-    private val fcmRepository = FcmRepository()
+class LoginViewModel(
+    application: Application,
+    private val authManager: AuthManager,
+    private val loginUseCase: LoginUseCase,
+    private val registerFcmTokenUseCase: RegisterFcmTokenUseCase
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -42,7 +43,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
 
         _uiState.value = _uiState.value.copy(isLoading = true)
 
-        authRepository.login(phone) { result ->
+        loginUseCase.execute(phone) { result ->
             when (result) {
                 is AppResult.Success -> {
                     val login = result.data
@@ -69,7 +70,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val token = task.result
-                fcmRepository.registerToken(parentId, token) { result ->
+                registerFcmTokenUseCase.execute(parentId, token) { result ->
                     when (result) {
                         is ApiResult.Success -> {
                             Log.d(TAG, "FCM 토큰 등록 완료")

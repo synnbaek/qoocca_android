@@ -34,11 +34,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.qoocca.parentapp.presentation.login.LoginEvent
 import com.qoocca.parentapp.presentation.login.LoginViewModel
+import com.qoocca.parentapp.presentation.login.LoginViewModelFactory
 import com.qoocca.parentapp.ui.theme.QooccaParentsTheme
 
 class LoginActivity : ComponentActivity() {
 
-    private val viewModel: LoginViewModel by viewModels()
+    private val appContainer by lazy { (application as ParentAppApplication).appContainer }
+    private val viewModel: LoginViewModel by viewModels {
+        LoginViewModelFactory(
+            application = application,
+            authManager = appContainer.authManager,
+            loginUseCase = appContainer.loginUseCase,
+            registerFcmTokenUseCase = appContainer.registerFcmTokenUseCase
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

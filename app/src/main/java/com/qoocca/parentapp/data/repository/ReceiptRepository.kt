@@ -6,13 +6,14 @@ import com.qoocca.parentapp.ParentReceiptResponse
 import com.qoocca.parentapp.data.network.ApiClient
 import com.qoocca.parentapp.data.network.ApiErrorMapper
 import com.qoocca.parentapp.data.network.ApiResult
+import com.qoocca.parentapp.domain.port.ReceiptDataSource
 import com.qoocca.parentapp.domain.result.AppResult
 
 class ReceiptRepository(
-    private val apiClient: ApiClient = ApiClient(),
-    private val gson: Gson = Gson()
-) {
-    fun fetchReceiptRequests(
+    private val apiClient: ApiClient,
+    private val gson: Gson
+) : ReceiptDataSource {
+    override fun fetchReceiptRequests(
         token: String,
         onResult: (AppResult<List<ParentReceiptResponse>>) -> Unit
     ) {
@@ -34,7 +35,7 @@ class ReceiptRepository(
         }
     }
 
-    fun fetchReceiptDetail(
+    override fun fetchReceiptDetail(
         token: String,
         receiptId: Long,
         onResult: (AppResult<ParentReceiptResponse>) -> Unit

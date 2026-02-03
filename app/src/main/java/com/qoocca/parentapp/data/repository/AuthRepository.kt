@@ -4,15 +4,16 @@ import com.qoocca.parentapp.data.model.LoginResponse
 import com.qoocca.parentapp.data.network.ApiClient
 import com.qoocca.parentapp.data.network.ApiErrorMapper
 import com.qoocca.parentapp.data.network.ApiResult
+import com.qoocca.parentapp.domain.port.AuthDataSource
 import com.qoocca.parentapp.domain.result.AppResult
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 class AuthRepository(
-    private val apiClient: ApiClient = ApiClient()
-) {
-    fun login(phone: String, onResult: (AppResult<LoginResponse>) -> Unit) {
+    private val apiClient: ApiClient
+) : AuthDataSource {
+    override fun login(phone: String, onResult: (AppResult<LoginResponse>) -> Unit) {
         val requestJson = JSONObject().apply {
             put("parentPhone", phone)
         }

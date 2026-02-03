@@ -10,7 +10,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class ApiClient(
-    private val client: OkHttpClient = OkHttpClient()
+    private val client: OkHttpClient
 ) {
     private val emptyBody: RequestBody = ByteArray(0).toRequestBody(null)
 

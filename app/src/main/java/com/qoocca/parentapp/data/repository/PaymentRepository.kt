@@ -4,13 +4,14 @@ import com.qoocca.parentapp.data.network.ApiClient
 import com.qoocca.parentapp.data.network.ApiErrorMapper
 import com.qoocca.parentapp.data.network.ApiResult
 import com.qoocca.parentapp.domain.error.AppError
+import com.qoocca.parentapp.domain.port.PaymentDataSource
 import com.qoocca.parentapp.domain.result.AppResult
 
 class PaymentRepository(
-    private val apiClient: ApiClient = ApiClient()
-) {
+    private val apiClient: ApiClient
+) : PaymentDataSource {
 
-    fun payReceipt(
+    override fun payReceipt(
         token: String,
         receiptId: Long,
         onResult: (AppResult<Unit>) -> Unit

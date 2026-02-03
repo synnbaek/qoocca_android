@@ -66,6 +66,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.qoocca.parentapp.presentation.main.MainUiState
 import com.qoocca.parentapp.presentation.main.MainViewModel
+import com.qoocca.parentapp.presentation.main.MainViewModelFactory
 import com.qoocca.parentapp.presentation.common.AuthSessionEvent
 import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.ui.theme.QooccaParentsTheme
@@ -77,7 +78,14 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: MainViewModel by viewModels()
+    private val appContainer by lazy { (application as ParentAppApplication).appContainer }
+    private val viewModel: MainViewModel by viewModels {
+        MainViewModelFactory(
+            application = application,
+            authManager = appContainer.authManager,
+            getReceiptListUseCase = appContainer.getReceiptListUseCase
+        )
+    }
     private lateinit var paymentLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {

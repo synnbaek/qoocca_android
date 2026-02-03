@@ -4,9 +4,9 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import com.qoocca.parentapp.AuthManager
-import com.qoocca.parentapp.data.repository.ReceiptRepository
 import com.qoocca.parentapp.domain.error.AppError
 import com.qoocca.parentapp.domain.result.AppResult
+import com.qoocca.parentapp.domain.usecase.GetReceiptListUseCase
 import com.qoocca.parentapp.presentation.common.AppEventLogger
 import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.presentation.common.UiMessageFactory
@@ -14,10 +14,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val authManager = AuthManager(application)
-    private val receiptRepository = ReceiptRepository()
+class MainViewModel(
+    application: Application,
+    private val authManager: AuthManager,
+    private val getReceiptListUseCase: GetReceiptListUseCase
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -51,7 +52,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             error = null
         )
 
-        receiptRepository.fetchReceiptRequests(token) { result ->
+        getReceiptListUseCase.execute(token) { result ->
             when (result) {
                 is AppResult.Success -> {
                     AppEventLogger.logEvent(getApplication(), "receipt_list_success", mapOf("count" to result.data.size))

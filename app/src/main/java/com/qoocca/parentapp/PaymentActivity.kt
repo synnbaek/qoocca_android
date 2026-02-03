@@ -14,7 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,6 +33,7 @@ import com.qoocca.parentapp.presentation.common.AuthSessionManager
 import com.qoocca.parentapp.presentation.payment.PaymentEvent
 import com.qoocca.parentapp.presentation.payment.PaymentUiState
 import com.qoocca.parentapp.presentation.payment.PaymentViewModel
+import com.qoocca.parentapp.presentation.payment.PaymentViewModelFactory
 import com.qoocca.parentapp.ui.theme.QooccaParentsTheme
 import com.qoocca.parentapp.ui.theme.payboocFontFamily
 import java.text.NumberFormat
@@ -40,7 +41,15 @@ import java.util.Locale
 
 class PaymentActivity : ComponentActivity() {
 
-    private val viewModel: PaymentViewModel by viewModels()
+    private val appContainer by lazy { (application as ParentAppApplication).appContainer }
+    private val viewModel: PaymentViewModel by viewModels {
+        PaymentViewModelFactory(
+            application = application,
+            authManager = appContainer.authManager,
+            getReceiptDetailsUseCase = appContainer.getReceiptDetailsUseCase,
+            payReceiptsUseCase = appContainer.payReceiptsUseCase
+        )
+    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,7 +115,7 @@ class PaymentActivity : ComponentActivity() {
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.Filled.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "뒤로가기",
                                 tint = Color.White
                             )
@@ -258,7 +267,7 @@ fun PaymentScreen(
                     Text(studentNames, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Divider()
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),

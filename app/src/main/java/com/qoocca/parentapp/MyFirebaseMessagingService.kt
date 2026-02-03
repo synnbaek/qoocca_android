@@ -17,7 +17,9 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     private val tag = "FCM_SERVICE"
     private val channelId = "payment_channel"
-    private val fcmRepository = FcmRepository()
+    private val appContainer: AppContainer by lazy { (application as ParentAppApplication).appContainer }
+    private val fcmRepository: FcmRepository by lazy { appContainer.fcmRepository }
+    private val authManager: AuthManager by lazy { appContainer.authManager }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
@@ -80,7 +82,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private fun sendTokenToServer(token: String) {
-        val authManager = AuthManager(applicationContext)
         val parentId = authManager.getParentId()
 
         if (parentId == -1L) {

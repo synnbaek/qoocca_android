@@ -3,14 +3,15 @@
 import com.qoocca.parentapp.ApiConfig
 import com.qoocca.parentapp.data.network.ApiClient
 import com.qoocca.parentapp.data.network.ApiResult
+import com.qoocca.parentapp.domain.port.FcmDataSource
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 class FcmRepository(
-    private val apiClient: ApiClient = ApiClient()
-) {
-    fun registerToken(
+    private val apiClient: ApiClient
+) : FcmDataSource {
+    override fun registerToken(
         parentId: Long,
         fcmToken: String,
         onResult: (ApiResult<Unit>) -> Unit

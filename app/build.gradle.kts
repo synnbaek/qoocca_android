@@ -1,8 +1,14 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
 
-    id("com.google.gms.google-services")
+val hasGoogleServicesFile = file("google-services.json").exists() || file("src/debug/google-services.json").exists()
+if (hasGoogleServicesFile) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+} else {
+    logger.lifecycle("google-services.json not found. Skipping google-services and crashlytics plugins.")
 }
 
 android {
@@ -11,7 +17,7 @@ android {
 
     defaultConfig {
         applicationId = "com.qoocca.parentapp"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -39,7 +45,10 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation("com.google.firebase:firebase-messaging:23.4.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-crashlytics")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
@@ -47,7 +56,11 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.compose.foundation)
+    implementation("androidx.security:security-crypto:1.0.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -57,4 +70,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    // Gson
+    implementation("com.google.code.gson:gson:2.10.1")
 }

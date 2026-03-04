@@ -8,8 +8,30 @@
 
 프로젝트는 **MVVM 아키텍처**를 기반으로 기능별 패키징이 되어 있습니다.
 
-text app/src/main/java/com/qoocca/parentapp/ ├── data/                       # 데이터 계층 (Network & Local Storage) │   ├── network/                # API 응답 처리 및 Result 래퍼 │   ├── repository/             # 데이터 소스 제어 (FCM, Receipt 등) │   └── model/                  # DTO 및 엔티티 클래스 ├── presentation/               # UI 계층 (MVVM) │   ├── main/                   # 메인 홈 화면 (영수증 리스트) │   ├── login/                  # 로그인 화면 (전화번호 인증) │   └── common/                 # 공통 유틸리티 │       ├── AppLogger.kt        # 보안 마스킹 포함 로그 도구 │       ├── NotificationRouter.kt # 알림 클릭 시 화면 이동 제어 │       └── AuthSessionManager.kt # 세션 만료 및 인증 상태 관리 ├── ui/                         # 디자인 시스템 │   └── theme/                  # Compose Theme, Color, Font(Paybooc) 설정 ├── AuthManager.kt              # SharedPreferences 기반 세션 관리자 ├── AppContainer.kt             # 의존성 주입(DI) 컨테이너 ├── ParentAppApplication.kt     # 애플리케이션 클래스 (FCM/DI 초기화) ├── MyFirebaseMessagingService.kt # FCM 메시지 수신 및 알림 생성 서비스 ├── ReceiptDetailActivity.kt    # 결제 상세 처리 화면 └── MainActivity.kt             # 진입점 및 권한 체크
-Java
+app/src/main/java/com/qoocca/parentapp/
+│
+├── data/                       # 데이터 계층 (Network & Local)
+│   ├── network/                # API 응답 처리 및 Result 래퍼
+│   ├── repository/             # 데이터 소스 제어 (FCM, Receipt 등)
+│   └── model/                  # DTO 및 Entity
+│
+├── presentation/               # UI 계층 (MVVM)
+│   ├── main/                   # 메인 홈 화면 (영수증 리스트)
+│   ├── login/                  # 로그인 화면 (전화번호 인증)
+│   └── common/                 # 공통 유틸
+│       ├── AppLogger.kt        # 보안 마스킹 로그
+│       ├── NotificationRouter.kt # 알림 클릭 화면 이동 제어
+│       └── AuthSessionManager.kt # 세션 만료 및 인증 상태 관리
+│
+├── ui/
+│   └── theme/                  # Compose Theme, Color, Font(Paybooc)
+│
+├── AuthManager.kt              # SharedPreferences 기반 세션 관리자
+├── AppContainer.kt             # 의존성 주입(DI) 컨테이너
+├── ParentAppApplication.kt     # Application (FCM/DI 초기화)
+├── MyFirebaseMessagingService.kt # FCM 메시지 수신 서비스
+├── ReceiptDetailActivity.kt    # 결제 상세 화면
+└── MainActivity.kt             # 앱 진입점
 ---
 
 ## 🛠 기술 스택 (Tech Stack)

@@ -1,5 +1,4 @@
 # qoocca_android
-📱 Qoocca Parent App (부모용)
 Qoocca Parent App은 학원 관리 시스템과 연동되어 부모님이 자녀의 학원비 결제 요청을 실시간으로 받고, 앱 내에서 즉시 결제 및 취소를 처리할 수 있는 서비스입니다.
 🛠 Tech Stack
 •

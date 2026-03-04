@@ -127,3 +127,15 @@ FCM 토큰 등 민감 정보 마스킹 처리
 브랜드 아이덴티티를 위해 payboocFontFamily 기본 적용
 
 © 2024 Qoocca Team. All rights reserved.
+
+✅ 이제 절대 안 깨지는 이유
+
+text 제거
+
+<pre> 제거 (일반 코드블록 사용)
+
+코드블록 안에 줄바꿈 정상 처리
+
+kotlin 코드 별도 블록 처리
+
+언어 지정 (kotlin, http) 적용
